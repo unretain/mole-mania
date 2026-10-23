@@ -320,7 +320,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 0 20px; }
 
 #gameCanvas {
   display: block;
-  background: #7a4f2c;
+  background: #8a5a34;
   max-width: 100%;
   touch-action: none;
 }

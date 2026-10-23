@@ -2,6 +2,25 @@
   const canvas = document.getElementById('gameCanvas');
   const ctx = canvas.getContext('2d');
 
+  // Fallback for browsers without CanvasRenderingContext2D.roundRect
+  if (!ctx.roundRect) {
+    CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+      if (typeof r === 'number') r = { tl: r, tr: r, br: r, bl: r };
+      this.moveTo(x + r.tl, y);
+      this.lineTo(x + w - r.tr, y);
+      this.arcTo(x + w, y, x + w, y + r.tr, r.tr);
+      this.lineTo(x + w, y + h - r.br);
+      this.arcTo(x + w, y + h, x + w - r.br, y + h, r.br);
+      this.lineTo(x + r.bl, y + h);
+      this.arcTo(x, y + h, x, y + h - r.bl, r.bl);
+      this.lineTo(x, y + r.tl);
+      this.arcTo(x, y, x + r.tl, y, r.tl);
+      return this;
+    };
+  }
+
+  const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+
   const CELL = 24;
   const COLS = canvas.width / CELL;
   const ROWS = canvas.height / CELL;
@@ -16,9 +35,9 @@
   const restartBtn = document.getElementById('restartBtn');
 
   const FOOD_TYPES = [
-    { emoji: '🪱', points: 1, weight: 60, speedUp: 0 },
-    { emoji: '🐛', points: 2, weight: 30, speedUp: 0 },
-    { emoji: '🪲', points: 3, weight: 10, speedUp: 10 },
+    { emoji: '🪱', points: 1, weight: 60, speedUp: 0, glow: '#ff8fa3' },
+    { emoji: '🐛', points: 2, weight: 30, speedUp: 0, glow: '#ffd166' },
+    { emoji: '🪲', points: 3, weight: 10, speedUp: 10, glow: '#8d6fb3' },
   ];
 
   const BASE_INTERVAL = 160;
@@ -140,10 +159,10 @@
 
   function draw() {
     // tunnel background
-    ctx.fillStyle = '#7a4f2c';
+    ctx.fillStyle = '#8a5a34';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+    ctx.strokeStyle = 'rgba(0,0,0,0.12)';
     ctx.lineWidth = 1;
     for (let i = 0; i <= COLS; i++) {
       ctx.beginPath();
@@ -159,28 +178,36 @@
     }
 
     // dirt specks
-    ctx.fillStyle = 'rgba(0,0,0,0.06)';
+    ctx.fillStyle = 'rgba(0,0,0,0.08)';
     for (let i = 0; i < 40; i++) {
       const sx = (i * 53) % canvas.width;
       const sy = (i * 97) % canvas.height;
       ctx.fillRect(sx, sy, 3, 3);
     }
 
-    // food
-    ctx.font = `${CELL - 2}px serif`;
+    // food: bright glow circle behind the emoji so it always pops, even if
+    // a browser can't render the emoji glyph itself
+    const foodCx = food.x * CELL + CELL / 2;
+    const foodCy = food.y * CELL + CELL / 2;
+    ctx.fillStyle = food.type.glow;
+    ctx.beginPath();
+    ctx.arc(foodCx, foodCy, CELL / 2 - 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.font = `${CELL - 4}px ${EMOJI_FONT}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(food.type.emoji, food.x * CELL + CELL / 2, food.y * CELL + CELL / 2 + 1);
+    ctx.fillText(food.type.emoji, foodCx, foodCy + 1);
 
-    // mole body
+    // mole body — cool grey/violet velvet tones, high-contrast against the brown dirt
     for (let i = mole.length - 1; i >= 1; i--) {
-      const shade = i % 2 === 0 ? '#9c6b3f' : '#8b5a2b';
+      const shade = i % 2 === 0 ? '#8a8a9a' : '#6f6f82';
       drawRoundedCell(mole[i].x, mole[i].y, shade, 3);
     }
 
     // mole head
     const head = mole[0];
-    drawRoundedCell(head.x, head.y, '#5c3a21', 1);
+    drawRoundedCell(head.x, head.y, '#4b4b5c', 1);
 
     // nose direction offset
     const cx = head.x * CELL + CELL / 2;
@@ -193,7 +220,7 @@
     ctx.fill();
 
     // tiny eyes
-    ctx.fillStyle = '#2a1a0f';
+    ctx.fillStyle = '#1a1a22';
     const eyeOffX = dir.x !== 0 ? 0 : 6;
     const eyeOffY = dir.y !== 0 ? 0 : -4;
     ctx.beginPath();
